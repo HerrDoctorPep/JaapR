@@ -1,76 +1,18 @@
-#Loading the rvest package
-library('rvest')
+#
+# Scraping jaap.nllistings for Rotterdam
+#
+# Based on https://www.analyticsvidhya.com/blog/2017/03/beginners-guide-on-web-scraping-in-r-using-rvest-with-hands-on-knowledge/
+#
 
-#Specifying the url for desired website to be scraped
-url1 <- 'https://www.jaap.nl/koophuizen/zuid+holland/groot-rijnmond/rotterdam'
+#Loading the packages
+library('rvest') # scraping
+library('tidyverse') # data wrangling
+library('stringr') #string manipulation
+library('dplyr') #more tidy stuff
+library('purrr')
+library('tidyr')
 
-#Reading the HTML code from the website
-webpage1 <- read_html(url1)
-
-adres_html <- html_text(html_nodes(webpage1,'.property-address-street'))
-postcode_html <- html_text(html_nodes(webpage1,'.property-address-zipcity'))
-type_html <- html_text(html_nodes(webpage1,'.property-features div:nth-child(1)')) # let op features schuiven door
-kamers_html <- html_text(html_nodes(webpage1,'.property-features div:nth-child(2)')) # let op features schuiven door
-m2_html <- html_text(html_nodes(webpage1,'.property-features div:nth-child(3)')) # let op features schuiven door
-price_html <- html_text(html_nodes(webpage1,'.property-price'))
-pricetype_html <- html_text(html_nodes(webpage1,'.pricetype'))
-# price_info <- html_text(html_nodes(webpage1,'.price-info span'))
-
-# missend woningtype fixen
-
-missingType <- which(str_detect(type_html,"kamers") & str_detect(kamers_html,"m²"))
-
-m2_html <- append(m2_html,kamers_html[missingType],after = missingType-1)
-kamers_html[missingType] <- type_html[missingType]
-type_html[missingType] <- NA
-
-# Wegschrijven naar tibble
-
-huizen <- tibble(adres = adres_html,
-                 postcode = postcode_html,
-                 type = type_html,
-                 m2 = m2_html,
-                 kamers = kamers_html,
-                 prijs = price_html,
-                 prijstype = pricetype_html)
-
-
-# More pages
-
-
-url2 <- 'https://www.jaap.nl/koophuizen/zuid+holland/groot-rijnmond/rotterdam/p2'
-webpage2 <- read_html(url2)
-
-adres_html <- html_text(html_nodes(webpage2,'.property-address-street'))
-postcode_html <- html_text(html_nodes(webpage2,'.property-address-zipcity'))
-type_html <- html_text(html_nodes(webpage2,'.property-features div:nth-child(1)')) # let op features schuiven door
-kamers_html <- html_text(html_nodes(webpage2,'.property-features div:nth-child(2)')) # let op features schuiven door
-m2_html <- html_text(html_nodes(webpage2,'.property-features div:nth-child(3)')) # let op features schuiven door
-price_html <- html_text(html_nodes(webpage2,'.property-price'))
-pricetype_html <- html_text(html_nodes(webpage2,'.pricetype'))
-# price_info <- html_text(html_nodes(webpage1,'.price-info span'))
-
-length(type_html)
-length(kamers_html)
-length(m2_html)
-
-missingType <- which(str_detect(type_html,"kamers") & str_detect(kamers_html,"m²"))
-
-m2_html <- append(m2_html,kamers_html[missingType],after = missingType-1)
-kamers_html[missingType] <- type_html[missingType]
-type_html[missingType] <- NA
-
-huizen <- huizen %>% bind_rows(tibble(adres = adres_html,
-                postcode = postcode_html,
-                type = type_html,
-                m2 = m2_html,
-                kamers = kamers_html,
-                prijs = price_html,
-                prijstype = pricetype_html))
-
-rm(huizen_html)
-
-maxPage <- 47
+maxPage <- 46
 
 for (p in 1:maxPage){
   urli <- paste('https://www.jaap.nl/koophuizen/zuid+holland/groot-rijnmond/rotterdam/50+-woonopp/p',as.character(p),sep="")
@@ -92,8 +34,8 @@ for (p in 1:maxPage){
   print(length(m2_html))
   
   #correct flaws
-  
-  for(i in 1:1){
+
+  for(i in 1:length(type_html)){
     if(str_detect(type_html[i],"kamers") & str_detect(kamers_html[i],"m²")){
       m2_html <- append(m2_html,kamers_html[i],after = i-1)
       kamers_html[i] <- append(kamers_html,type_html[i],after = i-1)
@@ -131,7 +73,7 @@ for (p in 1:maxPage){
 
 # write to file; just in case
 
-write_csv(huizen_html, path="huizen_html.csv", na = "NA", append = FALSE, col_names = TRUE)
+write_csv(huizen_html, path="huizen_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
 
 # make numbers; for analysis purposes
 
@@ -181,7 +123,7 @@ huizen_bypc <- huizen_clean %>%
             prijspm2_avg = mean(prijspm2))
 
 
-ggplot() +
-  ggtitle("Avg prijs per m2 naar postcode4") +
-  geom_col(data=huizen_bypc,aes(postcode4,prijspm2_avg,col=postcode4))
+# ggplot() +
+#   ggtitle("Avg prijs per m2 naar postcode4") +
+#   geom_col(data=huizen_bypc,aes(postcode4,prijspm2_avg,col=postcode4))
 
