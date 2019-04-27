@@ -50,6 +50,9 @@ for (p in 1:maxPage){
     }
   }
   
+  
+  GoogleAPI_key <- read_file("Google_key.txt")
+  
   # write tibble
   
   if(p==1){
@@ -122,17 +125,6 @@ ggplot() +
   geom_point(data=huizen_clean,aes(postcode4,prijspm2,col=postcode4))
 
 
-# ggplot() +
-#   ggtitle("Avg prijs per m2 naar postcode4") +
-#   geom_col(data=huizen_bypc,aes(postcode4,prijspm2_avg,col=postcode4))
-
-#
-# Add postal code data
-#
-
-# Load postal codes
-# Note: there are some doubling rows to remove
-
 library('readxl')
 postcode_data <- read_xlsx("C:/Users/micro/HiDrive/RawData/postcodetabel/postcodetabel.xlsx")
 postcode_data <- postcode_data %>%
@@ -161,6 +153,8 @@ library(ggmap)
 library(maps)
 library(mapdata)
 
+GoogleAPI_key <- read_file("Google_key.txt")
+
 ggplot() + 
   geom_polygon(data = map_data("world", region="netherlands"), aes(x=long, y = lat, group = group),colour="grey",fill="lightgrey") + 
   coord_fixed(1.3) +
@@ -171,7 +165,8 @@ ggplot() +
 mean(huizen_forplot$Longitude[!is.na(huizen_forplot$Longitude)])
 mean(huizen_forplot$Latitude[!is.na(huizen_forplot$Latitude)])
 
-(map_Roffa13 <- get_googlemap(c(4.48,51.915),key="AIzaSyDFp1dCbSx2aQGFakv5Uup71wximjGaDg8", zoom=13))
+register_google(GoogleAPI_key)
+(map_Roffa13 <- get_googlemap(c(4.48,51.915), zoom=13))
 
 ggmap(map_Roffa13) +
   geom_point(data = huizen_forplot, aes(x = Longitude, y = Latitude,colour=log(prijs_avg)), size = 2) +
