@@ -50,9 +50,6 @@ for (p in 1:maxPage){
     }
   }
   
-  
-  GoogleAPI_key <- read_file("Google_key.txt")
-  
   # write tibble
   
   if(p==1){
@@ -77,9 +74,6 @@ for (p in 1:maxPage){
 # write to file; just in case
 
 write_csv(huizen_html, path="huizen_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
-
-
-
 
 # make numbers; for analysis purposes
 
@@ -108,6 +102,12 @@ huizen_clean <- huizen_data %>%
   filter(prijs<2e6 & prijs>50000) %>%
   filter(!is.na(postcode4))
 
+# Write the clean data set to file
+
+write_csv("huizen_clean",path ="huizen_clean_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
+
+# plot some simple 
+
 ggplot() +
   ggtitle("Prijs naar woonoppervlak") +
   geom_point(data=huizen_clean,aes(m2,prijs,col=postcode4))
@@ -124,6 +124,12 @@ ggplot() +
   ggtitle("Prijs per m2 naar postcode4") +
   geom_point(data=huizen_clean,aes(postcode4,prijspm2,col=postcode4))
 
+#
+# And now for geo-plotting...
+#
+
+#include postal code long/lat coordinates
+# Using table from http://www.sqlblog.nl/postcodetabel-nederland-sql-script/
 
 library('readxl')
 postcode_data <- read_xlsx("C:/Users/micro/HiDrive/RawData/postcodetabel/postcodetabel.xlsx")
@@ -183,3 +189,5 @@ ggmap(map_Roffa13) +
 ggmap(map_Roffa13) +
   geom_point(data = huizen_forplot, aes(x = Longitude, y = Latitude,colour=m2_avg), size = 2) +
   labs(title = "Woninggrootte in Rotterdam", x="Longitude", y="Lattitude")
+
+
