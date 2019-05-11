@@ -12,6 +12,7 @@ library('dplyr') #more tidy stuff
 library('purrr')
 library('tidyr')
 
+# Check manually how many pages there are
 maxPage <- 46
 
 for (p in 1:maxPage){
@@ -73,7 +74,7 @@ for (p in 1:maxPage){
 
 # write to file; just in case
 
-write_csv(huizen_html, path="huizen_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
+write_csv(huizen_html, path="huizen_TODAY.csv", na = "NA", append = FALSE, col_names = TRUE)
 
 # make numbers; for analysis purposes
 
@@ -102,32 +103,6 @@ huizen_clean <- huizen_data %>%
   filter(prijs<2e6 & prijs>50000) %>%
   filter(!is.na(postcode4))
 
-# Write the clean data set to file
-
-write_csv("huizen_clean",path ="huizen_clean_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
-
-# plot some simple 
-
-ggplot() +
-  ggtitle("Prijs naar woonoppervlak") +
-  geom_point(data=huizen_clean,aes(m2,prijs,col=postcode4))
-
-ggplot() +
-  ggtitle("Prijs naar postcode4") +
-  geom_point(data=huizen_clean,aes(postcode4,prijs,col=postcode4))
-
-ggplot() +
-  ggtitle("Prijs per m² naar woonoppervlak") +
-  geom_point(data=huizen_clean,aes(log(m2),prijspm2,col=postcode4))
-
-ggplot() +
-  ggtitle("Prijs per m2 naar postcode4") +
-  geom_point(data=huizen_clean,aes(postcode4,prijspm2,col=postcode4))
-
-#
-# And now for geo-plotting...
-#
-
 #include postal code long/lat coordinates
 # Using table from http://www.sqlblog.nl/postcodetabel-nederland-sql-script/
 
@@ -139,21 +114,50 @@ postcode_data <- postcode_data %>%
   summarise(Latitude = mean(Latitude),
             Longitude = mean(Longitude))
 
+huizen_clean <- huizen_clean %>%
+  left_join(postcode_data,by=c("postcode6"="PostCode")) %>%
+  mutate(prijspm2 = prijs / m2) %>%
+  filter(!is.na(Longitude))
+
+
+# Simplify types
+
+type_tabel <- tibble(type_complex = unique(huizen_clean$type)) %>%
+  mutate(type_simpel = ifelse(type_complex=="Bovenwoning" | type_complex=="Dubbele bovenwoning" | type_complex=="Benedenwoning","Appartement",
+                              ifelse(type_complex=="Maisonette" | type_complex=="Studio" | type_complex =="Kamer" | type_complex == "Appartement","Appartement",
+                                     ifelse(type_complex=="Penthouse", "Penthouse",
+                                            ifelse(type_complex=="Woonboot", "Woonboot",
+                                                   ifelse(type_complex=="Garage", "Garage",
+                                                          ifelse(is.na(type_complex),"Onbekend","Huis")))))))
+huizen_clean <- huizen_clean %>%
+  mutate(logprijs = log(prijs),
+         kamergrootte = m2/kamers,
+         postcode3 = as.factor(floor(postcode4/10)*10)) %>%
+  mutate(postcode4 = as.factor(postcode4)) %>%
+  mutate(m2xm2 = m2 * m2) %>%
+  right_join(type_tabel,by=c("type"="type_complex")) %>%
+  filter(!is.na(kamergrootte) & !is.infinite(kamergrootte))
+
+huizen_clean$type_simpel[which(is.na(huizen_clean$type_simpel))] <- "Onbekend"
+
+# Write the clean data set to file
+
+write_csv(huizen_clean,path ="huizen_clean_20190424.csv", na = "NA", append = FALSE, col_names = TRUE)
+
+# Try mapping stuff
+
 # Create table by postal code
 
 huizen_bypc <- huizen_clean %>%
   group_by(postcode6) %>%
   summarise(m2_avg = mean(m2),
             prijs_avg = mean(prijs),
-            kamers_avg = mean(kamers)
-  ) %>%
+            kamers_avg = mean(kamers),
+            Longitude = first(Longitude),
+            Latitude = first(Latitude)) %>%
   mutate(prijspm2_avg = prijs_avg / m2_avg,
          m2pkamer = m2_avg / kamers_avg)
 
-huizen_forplot <- huizen_bypc %>%
-  left_join(postcode_data,by = c("postcode6" = "PostCode"))
-
-# Try mapping stuff
 
 library(ggmap)
 library(maps)
