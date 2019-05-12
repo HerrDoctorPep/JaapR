@@ -10,48 +10,55 @@ HuisCheck <- function(adresHuis,postcode6Huis,kamersHuis,m2Huis,typeHuis){
   Huis$kamers <- c(kamersHuis)
   Huis$m2 <- c(m2Huis)
   Huis$m2xm2 <- c(m2Huis * m2Huis)
-  Huis$type_simpel <- c(typeHuis)
+  Huis$type_complex <- c(typeHuis)
   
-  Huis7_f <- fix7['(Intercept)'] + fix7['m2'] * Huis$m2[1] + fix7['kamers'] * Huis$kamers[1] + fix7['m2:kamers'] * Huis$m2[1] * Huis$kamers[1] + fix7['m2xm2'] * Huis$m2xm2[1]
-  Huis7_pc <- Beta7_pc[Huis$postcode4[1],'(Intercept)'] + (Huis$type_simpel[1] == "Huis") * Beta7_pc[Huis$postcode4[1],'type_simpelHuis'] + (Huis$type_simpel[1] == "Penthouse") * Beta7_pc[Huis$postcode4[1],'type_simpelPenthouse'] + (Huis$type_simpel[1] == "Woonboot") * Beta7_pc[Huis$postcode4[1],'type_simpelWoonboot']
-    
-  huizen_clean %>%
-    filter(postcode4==Huis$postcode4) %>%
-    print()
-  
-  Huis7 <- exp(Huis7_f + ifelse(!is.na(Huis7_pc),Huis7_pc,0))
-  print(paste0(Huis$adres[1],". Estimate 1 (fit7): ",round(Huis7,-3)))
-  
-  Huis1 <- exp(predict(fit1,Huis))
-  print(paste0(Huis$adres[1],". Estimate 2 (fit1): ",round(Huis1,-3)))
-  
-  # Add XG
-  
-  HuisXG <- Huis[,c("m2","m2xm2", "kamers", "postcode4")]%>%
-    mutate(postcode4 = as.numeric(as.character(postcode4)))
-  
-  LatLon <- postcode_data %>%
-    filter(PostCode == Huis$postcode6)
-
-  HuisXG$Latitude <-LatLon$Latitude    
-  HuisXG$Longitude <-LatLon$Longitude
-
-  DummyH <- matrix(NA, nrow = 1, ncol = length(type_simp))
-  
-  for (i in 1:length(type_simp)){
-    DummyH[,i]<- as.numeric(typeHuis == type_simp[i])
+  XH <- rep(NA,length(fix4))
+  XH[1] <- 1
+  XH[2] <- Huis$m2[1]
+  for(j in pos_type_complex) {
+    XH[j] <- paste0("type_complex",Huis$type_complex[1]) == names(fix4)[j]
   }
-  colnames(DummyH)<- type_simp
+  XH[length(pos_type_complex)+3] <- Huis$kamers[1]
+  XH[length(pos_type_complex)+4] <- Huis$m2xm2[1]
+  XH[length(pos_type_complex)+5] <- Huis$m2[1] * Huis$kamers[1]
 
-  HuisXG <- HuisXG %>%
-    mutate(postcode4 = as.numeric(as.character(postcode4))) %>%
-    bind_cols(as.tibble(DummyH))
+  pred4_f <- sum(XH * fix4)
+
+  pred4_pc <- ran4$postcode4[as.character(Huis$postcode4[1]),]
   
-  print(paste0(Huis$adres[1],". Estimate 3 (XG): ",round(predict(bst, as.matrix(HuisXG)),-3)))
+  huizen_data %>%
+    filter(postcode4==Huis$postcode4) %>%
+    select(adres,type_complex,postcode6, m2, kamers, prijs) %>%
+    print(n=Inf)
+  
+  Huis4 <- exp(pred4_f + ifelse(!is.na(pred4_pc),pred4_pc,0))
+  print(paste0(Huis$adres[1],". Estimate 1 (fit4): ",round(Huis4,-3)))
+  
+  Huis2 <- exp(predict(fit2,Huis))
+  print(paste0(Huis$adres[1],". Estimate 2 (fit2): ",round(Huis2,-3)))
+  
+  # # Add XG
+  # 
+  # HuisXG <- Huis[,c("m2","m2xm2", "kamers", "postcode4")]%>%
+  #   mutate(postcode4 = as.numeric(as.character(postcode4)))
+  # 
+  # LatLon <- postcode_data %>%
+  #   filter(PostCode == Huis$postcode6)
+  # 
+  # HuisXG$Latitude <-LatLon$Latitude    
+  # HuisXG$Longitude <-LatLon$Longitude
+  # 
+  # DummyH <- matrix(NA, nrow = 1, ncol = length(type_simp))
+  # 
+  # for (i in 1:length(type_simp)){
+  #   DummyH[,i]<- as.numeric(typeHuis == type_simp[i])
+  # }
+  # colnames(DummyH)<- type_simp
+  # 
+  # HuisXG <- HuisXG %>%
+  #   mutate(postcode4 = as.numeric(as.character(postcode4))) %>%
+  #   bind_cols(as.tibble(DummyH))
+  # 
+  # print(paste0(Huis$adres[1],". Estimate 3 (XG): ",round(predict(bst, as.matrix(HuisXG)),-3)))
   
 }
-
-HuisCheck("Hooidrift 14","3023KP",11,300,"Huis")
-HuisCheck("Klaverstraat 49","3083VB",7,410,"Huis")
-HuisCheck("Noordsingel 193","3035ER",6,250,"Huis")
-HuisCheck("Grote Visserijstraat 18A","3026CK",6,150,"Appartement")

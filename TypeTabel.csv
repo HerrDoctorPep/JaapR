@@ -1,0 +1,25 @@
+type_complex, type_simpel
+Tussenwoning, Huis
+Woning, Huis
+Vrijstaande woning, Huis
+Twee onder één kap, Huis
+Appartement, Appartement
+Villa, Huis
+Herenhuis, Huis
+Hoekwoning, Huis
+Benedenwoning, Appartement
+Eengezinswoning, Huis
+Bovenwoning, Appartement
+Dubbele bovenwoning, Appartement
+NA, Onbekend
+Penthouse, Appartement
+Bungalow, Huis
+Maisonette, Appartement
+Geschakelde woning, Huis
+Studio, Appartement
+Landhuis, Huis
+Woonboot, Woonboot
+Watertoren, Huis
+Kamer, Appartement
+Garage, Garage
+Woonboerderij, Huis
