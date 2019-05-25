@@ -2,63 +2,49 @@
 
 # Apply models fit4 and fit6 to check how realistic asking prices are
 
-HuisCheck <- function(adresHuis,postcode6Huis,kamersHuis,m2Huis,typeHuis){
-  Huis <- tibble(adres = c(adresHuis))
-  Huis$postcode6 <- c(as.character(postcode6Huis))
-  Huis$postcode4 <- c(substring(postcode6Huis,1,4))
-  Huis$postcode3 <- c(as.character(floor(as.numeric(Huis$postcode4)/10)*10))
-  Huis$kamers <- c(kamersHuis)
-  Huis$m2 <- c(m2Huis)
-  Huis$m2xm2 <- c(m2Huis * m2Huis)
-  Huis$type_complex <- c(typeHuis)
+HuisCheck <- function(adresHuis, postcode6, Kamers, Woonoppervlakte, Bouwjaar,
+                      Type ="Appartement", 
+                      Garage = "-",
+                      Tuin = "-",
+                      Balkon = "-",
+                      Isolatie = "-",
+                      Keuken = "-",
+                      Bijzonderheden = "-"){
+  Huis <- matrix(NA,nrow=1,ncol=33)
+  colnames(Huis) <- predictors_GLM
+  Huis[1,'postcode4'] <- substring(postcode6,1,4)
+  Huis[1,'Kamers'] <- Kamers
+  Huis[1,'Woonoppervlakte'] <- Woonoppervlakte
+  Huis[1,'m2xm2'] <- Woonoppervlakte * Woonoppervlakte
+  Huis[1,'Type'] <- Type
+  Huis[1,'Bouwjaar'] <- Bouwjaar
+  Huis[1,'Period'] <- round((Bouwjaar-10)/20,0)*20+10
+  Huis[1,'Tuin'] <- Tuin
+  Huis[1,'Balkon'] <- Balkon
+  Huis[1,'Keuken'] <- Keuken
+  Huis[1,'Isolatie'] <- Isolatie
+  Huis[1,'Bijzonderheden'] <- Bijzonderheden
   
-  XH <- rep(NA,length(fix4))
-  XH[1] <- 1
-  XH[2] <- Huis$m2[1]
-  for(j in pos_type_complex) {
-    XH[j] <- paste0("type_complex",Huis$type_complex[1]) == names(fix4)[j]
-  }
-  XH[length(pos_type_complex)+3] <- Huis$kamers[1]
-  XH[length(pos_type_complex)+4] <- Huis$m2xm2[1]
-  XH[length(pos_type_complex)+5] <- Huis$m2[1] * Huis$kamers[1]
-
-  pred4_f <- sum(XH * fix4)
-
-  pred4_pc <- ran4$postcode4[as.character(Huis$postcode4[1]),]
+  # Huis[1,'longitude'] <- huizen_data %>% filter(postcode6 = postcode6) %>% summarise(first(longitude))
+  # Huis[1,'latitude'] <- huizen_data %>% filter(postcode6 = postcode6) %>% summarise(first(latitude))
+  
+  Huis <- as.tibble(Huis)
+  
+  Huis <- utils::type.convert(Huis) %>%
+    mutate(Period = as.factor(Period))
   
   huizen_data %>%
     filter(postcode4==Huis$postcode4) %>%
     select(adres,type_complex,postcode6, m2, kamers, prijs) %>%
     print(n=Inf)
   
-  Huis4 <- exp(pred4_f + ifelse(!is.na(pred4_pc),pred4_pc,0))
-  print(paste0(Huis$adres[1],". Estimate 1 (fit4): ",round(Huis4,-3)))
+  # GLM 
   
-  Huis2 <- exp(predict(fit2,Huis))
-  print(paste0(Huis$adres[1],". Estimate 2 (fit2): ",round(Huis2,-3)))
+  Huis_test <- predict(normalize_model,newdata = Huis)
+  Huis_GLM <- exp(predict(model_logGLM, newdata = Huis_test))  
+  print(paste0(adresHuis,". Estimate 1 (GLM): ",round(Huis_GLM,-3)))
   
-  # # Add XG
-  # 
-  # HuisXG <- Huis[,c("m2","m2xm2", "kamers", "postcode4")]%>%
-  #   mutate(postcode4 = as.numeric(as.character(postcode4)))
-  # 
-  # LatLon <- postcode_data %>%
-  #   filter(PostCode == Huis$postcode6)
-  # 
-  # HuisXG$Latitude <-LatLon$Latitude    
-  # HuisXG$Longitude <-LatLon$Longitude
-  # 
-  # DummyH <- matrix(NA, nrow = 1, ncol = length(type_simp))
-  # 
-  # for (i in 1:length(type_simp)){
-  #   DummyH[,i]<- as.numeric(typeHuis == type_simp[i])
-  # }
-  # colnames(DummyH)<- type_simp
-  # 
-  # HuisXG <- HuisXG %>%
-  #   mutate(postcode4 = as.numeric(as.character(postcode4))) %>%
-  #   bind_cols(as.tibble(DummyH))
-  # 
-  # print(paste0(Huis$adres[1],". Estimate 3 (XG): ",round(predict(bst, as.matrix(HuisXG)),-3)))
-  
+  Huis_MLM <- exp(predict(model_MLM, newdata = Huis_test))
+  print(paste0(adresHuis,". Estimate 1 (MLM): ",round(Huis_MLM,-3)))
+
 }

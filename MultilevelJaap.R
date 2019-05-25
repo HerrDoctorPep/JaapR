@@ -47,43 +47,38 @@ pred4_f <- as.vector(X4 %*% fix4)
 
 pred4_pc <- Beta4_pc
 
-# fit5 does not even converge!!
-
-fit5 <- lmer(logprijs ~  (m2|postcode4) + type_complex + kamers + kamers*m2 + m2xm2 , data = huizen_train)
-summary(fit5)
-
-fix5 <-fixef(fit5)
-ran5 <-ranef(fit5)
-
-Beta5_pc <- ran5$postcode4[as.character(huizen_valid$postcode4),]
-
-X5 <- matrix(NA, ncol = length(fix4), nrow = nrow(huizen_valid))
-X5[,1] <- 1
-X5[,2] <- huizen_valid$m2
-for (i in 1:nrow(huizen_valid)){
-  for(j in 3:22) {
-    X5[i,j] <- paste0("type_complex",huizen_valid$type_complex[i]) == names(fix4)[j]
-  }
-}
-
-X5[,23] <- huizen_valid$kamers
-X5[,24] <- huizen_valid$m2xm2
-X5[,25] <- huizen_valid$m2 * huizen_valid$kamers
-
-pred5_f <- as.vector(X5 %*% fix5)
-pred5_pc <- Beta5_pc$`(Intercept)` + Beta5_pc$m2 * huizen_valid$m2
+# # fit5 does not even converge!!
+# 
+# fit5 <- lmer(logprijs ~  (m2|postcode4) + type_complex + kamers + kamers*m2 + m2xm2 , data = huizen_train)
+# summary(fit5)
+# 
+# fix5 <-fixef(fit5)
+# ran5 <-ranef(fit5)
+# 
+# Beta5_pc <- ran5$postcode4[as.character(huizen_valid$postcode4),]
+# 
+# X5 <- matrix(NA, ncol = length(fix4), nrow = nrow(huizen_valid))
+# X5[,1] <- 1
+# X5[,2] <- huizen_valid$m2
+# for (i in 1:nrow(huizen_valid)){
+#   for(j in 3:22) {
+#     X5[i,j] <- paste0("type_complex",huizen_valid$type_complex[i]) == names(fix4)[j]
+#   }
+# }
+# 
+# X5[,23] <- huizen_valid$kamers
+# X5[,24] <- huizen_valid$m2xm2
+# X5[,25] <- huizen_valid$m2 * huizen_valid$kamers
+# 
+# pred5_f <- as.vector(X5 %*% fix5)
+# pred5_pc <- Beta5_pc$`(Intercept)` + Beta5_pc$m2 * huizen_valid$m2
 
 ML_results <- tibble (pred4 = exp(pred4_f + pred4_pc),
-                      pred5 = exp(pred5_f + pred5_pc),
                       prijs = huizen_valid$prijs,
-                      pe4 = pred4/prijs-rep(1,nrow(huizen_valid)),
-                      pe5 = pred5/prijs-rep(1,nrow(huizen_valid))) 
+                      pe4 = pred4/prijs-rep(1,nrow(huizen_valid)))
 
 ML_results %>%
   summarise(mape4 = mean(abs(pe4)),
-            mape5 = mean(abs(pe5)),
-            rmse4 = sqrt(mean(pe4^2)),
-            rmse5 = sqrt(mean(pe5^2)))
-
+            rmse4 = sqrt(mean(pe4^2)))
 
 
