@@ -91,6 +91,11 @@ source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equal
 # 
 # source("CaretGLM2Jaap.r") # Do not perform as well as log-linear model
 
+
+# # Two models with some variables modeled separately, based on the errors
+# 
+# source("CaretGLM+Jaap.r") # Works almost as good as the log-linear regression, but not completely
+
 # TwoXGB models
 
 source("CaretXGBJaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE = c. 14.2%
@@ -140,3 +145,4 @@ Huis_test <- bind_cols(Huis_test,HuisCheck(Huis_test))
 Huis_test%>%
   select("id", pred_GLM, "pred_MLM", "pred_XGT") %>%
   print()
+
