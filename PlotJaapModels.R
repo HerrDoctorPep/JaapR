@@ -19,9 +19,10 @@ ggplot() +
 # Might be worthwhile to add Heightof ceiling...
 
 ggplot() +
-  geom_point(data=P_test,aes(x=X_test$Inhoud/X_test$Woonoppervlakte,y=PE_logGLM,col="GLM",alpha=0.5)) +
-  geom_point(data=P_test,aes(x=X_test$Inhoud/X_test$Woonoppervlakte,y=PE_MLM,col="MLM",alpha=0.5)) +
+  geom_point(data=P_test,aes(x=X_test$Inhoud/X_test$Woonoppervlakte,y=PE_logGLM,col="GLM"),alpha=0.2) +
+  geom_point(data=P_test,aes(x=X_test$Inhoud/X_test$Woonoppervlakte,y=PE_MLM,col="MLM"),alpha=0.2) +
   labs(title = "Plafondhoogte v. % error", x="Gem. plafondhoogte", y="% error")
+
 
 ggplot() +
   geom_histogram(data = P_test,aes(PE_logGLM))

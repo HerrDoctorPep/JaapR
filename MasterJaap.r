@@ -12,6 +12,7 @@ library('purrr') # more tidy stuff
 library('tidyr') # more tidy stuff
 library('lubridate') # more tidy stuff
 library('caret') # Machine learning wrapper
+library('lme4') # simple multilevel stuff
 
 
 # Include support tables and load cleaning/scraping functions
@@ -27,8 +28,12 @@ source("JaapDeepScraper.r")
 # Set-up parameters for scraping manually
 
 mainPage <- 'https://www.jaap.nl/koophuizen/zuid+holland/groot-rijnmond/rotterdam/50+-woonopp/'
-maxPage <- 48 # encoded within DOM node ".page-info"onmain page; still to be automated
-TODAY = "20190525" # Format: YYYYMMDD
+trimws(html_text(html_node(read_html(mainPage),'.page-info'))) # find max number of pages
+
+maxPage <- 46 # still to be automated
+TODAY = "20190601" # Format: YYYYMMDD
+
+.page-info
 
 # Scrape all summary pages and write to file and write to disc using JaapScraper.r
 
@@ -44,20 +49,20 @@ rm(huizen_html)
 # Note: does not yet handle if underlying page is missing... in that case restart loop with h <- h + 1
 
 for(h in 1:nrow(huizen_data)){
-  print(paste0("scraping house number...",h))
-  newline_html <- scrape_detail(huizen_data$id[h])
+  tryCatch({
+    print(paste0("scraping house number...",h))
+    newline_html <- scrape_detail(huizen_data$id[h])
   
-  if(h==1){
-    detail_html<- newline_html
-  } else{
-    detail_html <- detail_html %>% 
-      bind_rows(newline_html) 
-  }
+    if(h==1){
+      detail_html<- newline_html
+    } else{
+      detail_html <- detail_html %>% 
+        bind_rows(newline_html) 
+    }
+  }, error=function(e){cat("ERROR in house number",h,"\n")})
 }
 
 write_csv(detail_html, path=paste0("detail_",TODAY,".csv"), na = "NA", append = FALSE, col_names = TRUE)
-
-# read detailed data from file andbring to analyzable format
 
 detail_html <- read_csv(paste0("detail_",TODAY,".csv"))
 detail_data <- clean_detail(detail_html)
@@ -65,8 +70,8 @@ rm(detail_html)
 
 # Combine summary and detail into data set for madelling using JaapDeepScraper.r
 
-model_data <- combine_summary_detail (summary_data,detail_data)
-rm(summary_data,detail_data)
+model_data <- combine_summary_detail (huizen_data,detail_data)
+rm(huizen_data,detail_data)
 
 ##
 ## Modelling 
@@ -80,11 +85,11 @@ model_data_test <- model_data[-id_train,]
 
 # Two Log-linear models
 
-source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE = c. 14.0%
+source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE = c. 14.9%
 
-# Two ppm2 models
-
-source("CaretGLM2Jaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE =c. 14.7%
+# # Two ppm2 models
+# 
+# source("CaretGLM2Jaap.r") # Do not perform as well as log-linear model
 
 # TwoXGB models
 
@@ -92,13 +97,46 @@ source("CaretXGBJaap.r") # Simple multiplicative andmulti-level models are equal
 
 #
 # Check expected asking prices 
-# Inputs: address, postal code, # rooms,  #m², house type
 #
 
-HuisCheck("Hooidrift 14","3023KP",11,300,"Woning",Bouwjaar=1909)
-HuisCheck("Klaverstraat 49","3083VB",7,410,"Villa", Bouwjaar=2000,Tuin="Ja",Balkon="Ja",Garage="Ja")
-HuisCheck("Noordsingel 193","3035ER",6,250,"Woning",Bouwjaar=1890,Tuin="Ja")
-HuisCheck("Grote Visserijstraat 18A","3026CK",6,150,"Appartement",Bouwjaar=1952,Balkon="Ja")
-HuisCheck("Voorhaven 34AB","3024RN",8,222,"Herenhuis",Bouwjaar=max(1649,1870)) # 1649 is a new level for Period variable
-HuisCheck("Van der Hilstraat 123","3023PK",10,225,"Woning",Bouwjaar=2019,Balkon="Ja")
+# Create empty test set
+Huis_test <- model_data_test %>%
+  filter(FALSE) %>%
+  select(-c("prijs","logprijs","Oorspronkelijkevraagprijs", "Huidigevraagprijs","prijspm2","Aantalkeergetoond", "Aantalkeergetoondgisteren","Geplaatstop"))
 
+# add lines
+
+Huis_test <- Huis_test %>%
+  bind_rows(ListHuis(list(id = "Grote Visserijstraat 18A",
+                          postcode6 = "3026CK",
+                          Kamers = 6,
+                          Woonoppervlakte = 150,
+                          Type = "Appartement",
+                          Bouwjaar = 1952,
+                          Balkon = "Ja")))
+Huis_test <- Huis_test %>%
+  bind_rows(ListHuis(list(id = "Klaverstraat 49",
+                          postcode6 = "3083VB",
+                          Kamers = 7,
+                          slaapkamers = 4,
+                          Woonoppervlakte = 410,
+                          Type = "Villa",
+                          Bouwjaar = 2000,
+                          Balkon = "Ja",
+                          Garage="Ja",
+                          Tuin="Ja")))
+Huis_test <- Huis_test %>%
+  bind_rows(ListHuis(list(id = "Van der Hilstraat 123",
+                          postcode6 = "3023PK",
+                          Kamers = 10,
+                          Slaapkamers =8,
+                          Woonoppervlakte = 225,
+                          Type = "Woning",
+                          Bouwjaar = 2019,
+                          Balkon = "Ja")))
+
+Huis_test <- bind_cols(Huis_test,HuisCheck(Huis_test))
+
+Huis_test%>%
+  select("id", pred_GLM, "pred_MLM", "pred_XGT") %>%
+  print()

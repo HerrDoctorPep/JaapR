@@ -110,22 +110,14 @@ clean_summary <- function(huizen_html){
   
   huizen_html <- huizen_html %>%
     mutate(prijs = as.integer(str_replace_all(substring(trimws(huizen_html$prijs), 3,nchar(huizen_html$prijs)-nchar(prijstype)-1),"\\.",""))) %>%
-    # mutate(m2 = as.integer(substring(trimws(m2), 1,nchar(m2)-3))) %>%
-    # mutate(kamers = as.integer(substring(trimws(kamers), 1,nchar(kamers)-7))) %>%
+    mutate(prijstype = as.factor(prijstype)) %>%
     mutate(postcode4 = as.integer(substring(postcode,1,4))) %>%
     mutate(postcode6 = str_replace_all(substring(postcode,1,7)," ","")) %>%
-    # mutate(prijspm2 = prijs / m2) %>%
-    # mutate(link = str_split(link,"\\?")[1]) %>%
-    # filter(m2<500 & m2 >50) %>%
     filter(prijs<2e6 & prijs>50000) %>%
     filter(!is.na(postcode6)) %>%
     mutate(logprijs = log(prijs)) %>%
-    # mutate(kamergrootte = m2/kamers) %>%
-    mutate(postcode3 = as.factor(floor(postcode4/10)*10))%>%
-    mutate(postcode4 = as.factor(postcode4)) # %>%
-    # mutate(m2xm2 = m2 * m2) %>%
-    # filter(!is.na(kamergrootte) & !is.infinite(kamergrootte))
-  
+    mutate(postcode4 = as.factor(postcode4))
+
   print(paste0("Rows with room count: ",nrow(huizen_html)))
   
   # join with postal code data

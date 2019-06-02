@@ -64,11 +64,3 @@ P_test %>%
 #   geom_point(data=P_test,aes(x=pred_MLM,y=pred_MLM-Price,col="MLM")) +
 #   labs(title = "Prijs v. Residual", x="Predicted price", y="Residue")  +
 #   coord_cartesian(xlim = c(0, 900000))
-  
-rm(X_train,
-   Y_train,
-   X_test,
-   Y_test,
-   Admissible_X,
-   P_test,
-   skimmed)

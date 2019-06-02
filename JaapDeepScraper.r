@@ -27,15 +27,17 @@ scrape_detail <- function(house_id){
   overige_html <- matrix(waarde_html,nrow=1)
   colnames(overige_html) <- kenmerk_html
   
-  colnames(overige_html) <- gsub(" ","",overige_html)
-  colnames(overige_html) <- gsub(")","",overige_html)
-  colnames(overige_html) <- gsub("\\(","",overige_html)
+  colnames(overige_html) <- gsub(" ","",colnames(overige_html))
+  colnames(overige_html) <- gsub(")","",colnames(overige_html))
+  colnames(overige_html) <- gsub("\\(","",colnames(overige_html))
 
   deep_html <- bind_rows(tibble(id = house_id,
                                 short = short_html,
                                 long = long_html,
                                 broker = broker_html))%>%
     bind_cols(as.data.frame(overige_html))
+  
+  return(deep_html)
 }
 
 
@@ -49,7 +51,7 @@ clean_detail <- function(detail_html){
   detail_html <- detail_html %>%
     mutate('short' = trimws(short),
            'long' = trimws(long),
-           'Type' = trimws(Type),
+           'Type' = as.factor(trimws(Type)),
            'Bouwjaar' = as.integer(Bouwjaar),
            'Woonoppervlakte' = as.integer(substring(trimws(Woonoppervlakte), 1,nchar(trimws(Woonoppervlakte))-3)),
            'Inhoud' = as.integer(substring(trimws(Inhoud), 1,nchar(trimws(Inhoud))-3)),
@@ -88,20 +90,29 @@ clean_detail <- function(detail_html){
 
 combine_summary_detail <- function(summary_data,detail_data){
   
-  model_data <-  huizen_data %>%
+  model_data <-  summary_data %>%
     select(id,postcode4,longitude,latitude,prijstype,prijs,logprijs) %>%
     left_join(detail_data,by=c("id" = "id"))
   
-  exclusion_lines <- which(is.na(model_data$Bouwjaar))
-  exclusion_ids <- model_data$id[exclusion_lines]
+  # exclusion_lines <- which(is.na(model_data$Bouwjaar))
+  # exclusion_ids <- model_data$id[exclusion_lines]
   
   model_data <- model_data %>%
-    filter(! id %in% exclusion_ids) %>%
+    # filter(! id %in% exclusion_ids) %>%
     select(-long) %>%
+    mutate(prijstype = as.factor(prijstype)) %>%
+    mutate(broker = as.factor(broker)) %>%
     mutate(Period = as.factor(round((Bouwjaar-10)/20,0)*20+10)) %>%
     mutate(prijspm2 = prijs / Woonoppervlakte) %>%
-    mutate(m2xm2 = Woonoppervlakte * Woonoppervlakte)
+    mutate(m2xm2 = Woonoppervlakte * Woonoppervlakte) %>%
+    mutate(Inhoud = ifelse(Inhoud < 2* Woonoppervlakte,NA, Inhoud)) %>%
+    mutate(Plafondhoogte = Inhoud / Woonoppervlakte) %>%
+    replace_na(list(Plafondhoogte = 2.5,
+                    Perceeloppervlakte = 0,
+                    Kamers = 1)) %>%
+    mutate(Slaapkamers = ifelse(is.na(Slaapkamers),Kamers-1,Slaapkamers)) %>%
+    mutate(Inhoud = ifelse(is.na(Inhoud),Woonoppervlakte * Plafondhoogte,Inhoud))
   
-  return(model_data)
+  return(model_data[complete.cases(model_data),])
 }
 
