@@ -1,6 +1,6 @@
 
 
-# Apply models fit4 and fit6 to check how realistic asking prices are
+# Create record for test set based on list of house characteristics
 
 ListHuis <- function(Characteristics) {
   Huis_test_line <- model_data_test %>%
@@ -27,7 +27,7 @@ ListHuis <- function(Characteristics) {
     )
 
   for (c in names(Characteristics)){
-    if(c %in% colnames(Huis)){
+    if(c %in% colnames(Huis_test_line)){
       Huis_test_line[1,c] = Characteristics[c]
     }
   }
@@ -41,6 +41,8 @@ ListHuis <- function(Characteristics) {
   Huis_test_line[1,'Inhoud'] <-   Huis_test_line[1,'Plafondhoogte'] *   Huis_test_line[1,'Woonoppervlakte']
   return(Huis_test_line)
 }
+
+# Get predictions from several models for a tibble of houses
 
 HuisCheck <- function(Huis_input){
   # GLM 
@@ -58,6 +60,16 @@ HuisCheck <- function(Huis_input){
            BijzonderhedenLiftZwembad = 0)
   
   Y_test$pred_XGT <- predict(model_xgbT,Huis_test_mat) * Huis_input$Woonoppervlakte
-  
+  Y_test$pred_XGL <- predict(model_xgbL,Huis_test_mat) * Huis_input$Woonoppervlakte  
   return(Y_test)
+}
+
+# Get reference houses for a postcode6
+
+HuisReference <- function(PostCode){
+  huizen_data %>%
+    filter(postcode4 == substring(PostCode,1,4))%>%
+    left_join(detail_data) %>%
+    select(c(adres, postcode6, prijs,prijstype, Woonoppervlakte))%>%
+    print(n=Inf)
 }

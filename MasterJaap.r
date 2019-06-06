@@ -12,8 +12,8 @@ library('purrr') # more tidy stuff
 library('tidyr') # more tidy stuff
 library('lubridate') # more tidy stuff
 library('caret') # Machine learning wrapper
-library('lme4') # simple multilevel stuff
-
+library('lme4') # simple multilevel model stuff
+library('readxl') # read xlsx files
 
 # Include support tables and load cleaning/scraping functions
 
@@ -33,8 +33,6 @@ trimws(html_text(html_node(read_html(mainPage),'.page-info'))) # find max number
 maxPage <- 46 # still to be automated
 TODAY = "20190601" # Format: YYYYMMDD
 
-.page-info
-
 # Scrape all summary pages and write to file and write to disc using JaapScraper.r
 
 scrape_summary_pages(mainPage,maxPage,TODAY)
@@ -45,8 +43,9 @@ huizen_html <- read_csv(paste0("huizen_",TODAY,".csv"))
 huizen_data <- clean_summary(huizen_html)
 rm(huizen_html)
 
-# scrape underlying pageswith details, using JaapDeepScraper.r
-# Note: does not yet handle if underlying page is missing... in that case restart loop with h <- h + 1
+##
+## scrape underlying pageswith details, using JaapDeepScraper.r
+## 
 
 for(h in 1:nrow(huizen_data)){
   tryCatch({
@@ -71,7 +70,6 @@ rm(detail_html)
 # Combine summary and detail into data set for madelling using JaapDeepScraper.r
 
 model_data <- combine_summary_detail (huizen_data,detail_data)
-rm(huizen_data,detail_data)
 
 ##
 ## Modelling 
@@ -85,7 +83,7 @@ model_data_test <- model_data[-id_train,]
 
 # Two Log-linear models
 
-source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE = c. 14.9%
+source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equally good c. 0.2%pt difference in MAPE
 
 # # Two ppm2 models
 # 
@@ -103,6 +101,8 @@ source("CaretXGBJaap.r") # Simple multiplicative andmulti-level models are equal
 #
 # Check expected asking prices 
 #
+
+source("CheckJaap.r") # create supporting functions to get predictions for pre-specificed houses
 
 # Create empty test set
 Huis_test <- model_data_test %>%
@@ -123,7 +123,7 @@ Huis_test <- Huis_test %>%
   bind_rows(ListHuis(list(id = "Klaverstraat 49",
                           postcode6 = "3083VB",
                           Kamers = 7,
-                          slaapkamers = 4,
+                          Slaapkamers = 4,
                           Woonoppervlakte = 410,
                           Type = "Villa",
                           Bouwjaar = 2000,
@@ -139,10 +139,24 @@ Huis_test <- Huis_test %>%
                           Type = "Woning",
                           Bouwjaar = 2019,
                           Balkon = "Ja")))
+Huis_test <- Huis_test %>%
+  bind_rows(ListHuis(list(id = "Havenstraat 146",
+                          postcode6 = "3024TL",
+                          Kamers = 9,
+                          Slaapkamers =5,
+                          Woonoppervlakte = 291,
+                          Type = "Herenhuis",
+                          Bouwjaar = 1900,
+                          Inhoud = 1023,
+                          Perceeloppervlakte = 152,
+                          Tuin="Achtertuin"
+                          )))
+
 
 Huis_test <- bind_cols(Huis_test,HuisCheck(Huis_test))
 
 Huis_test%>%
-  select("id", pred_GLM, "pred_MLM", "pred_XGT") %>%
+  select("id", pred_GLM, "pred_MLM", "pred_XGT", "pred_XGL") %>%
   print()
 
+HuisReference("3024TL")

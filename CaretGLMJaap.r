@@ -10,7 +10,7 @@ print("Linear model on Log(prijs)...")
 
 X_train <- model_data_train %>%
   select(-c("prijs","logprijs","Oorspronkelijkevraagprijs", "Huidigevraagprijs","prijspm2","Aantalkeergetoond", "Aantalkeergetoondgisteren","Geplaatstop"))
-y_train <- model_data_train %>%
+Y_train <- model_data_train %>%
   select(c("prijs","logprijs", "prijspm2","Oorspronkelijkevraagprijs", "Huidigevraagprijs"))
 
 predictors_GLM <- colnames(X_train)

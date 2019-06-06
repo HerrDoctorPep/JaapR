@@ -3,7 +3,7 @@ library('readxl')
 #include postal code long/lat coordinates
 # Using table from http://www.sqlblog.nl/postcodetabel-nederland-sql-script/
 
-# postcode_geo <- read_xlsx("C:/Users/micro/HiDrive/RawData/postcodetabel/postcodetabel.xlsx") %>%
+# postcode_geo <- read_xlsx("D:/micro/HiDrive/RawData/postcodetabel/postcodetabel.xlsx") %>%
 #   filter(substring(PostCode,1,1) == "3") %>%
 #   select(PostCode, Latitude, Longitude) %>%
 #   group_by(PostCode) %>%
