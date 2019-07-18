@@ -55,21 +55,33 @@ HuisCheck <- function(Huis_input){
                   
   
   #XGB
+  
+  Huis_test <- Huis_test %>%
+    select(-postcode4)
+  
   Huis_test_mat <- as_tibble(predict(dummies_model, newdata = Huis_test)) %>%
     mutate(BijzonderhedenGemeubileerd = 0,
            BijzonderhedenLiftZwembad = 0)
   
   Y_test$pred_XGT <- predict(model_xgbT,Huis_test_mat) * Huis_input$Woonoppervlakte
-  Y_test$pred_XGL <- predict(model_xgbL,Huis_test_mat) * Huis_input$Woonoppervlakte  
+  Y_test$pred_XGL <- predict(model_xgbL,Huis_test_mat) * Huis_input$Woonoppervlakte
+  Y_test$pred_Ens <- 0.5 * Y_test$pred_XGL + 0.5 * Y_test$pred_MLM
   return(Y_test)
 }
 
 # Get reference houses for a postcode6
 
 HuisReference <- function(PostCode){
-  huizen_data %>%
-    filter(postcode4 == substring(PostCode,1,4))%>%
-    left_join(detail_data) %>%
-    select(c(adres, postcode6, prijs,prijstype, Woonoppervlakte))%>%
+  print(paste0("Houses in same postcode4 area as ",PostCode))
+  
+  Reference_input <- model_data %>%
+    filter(postcode4 == substring(PostCode,1,4)) %>%
+    select(-c("prijs","logprijs","Oorspronkelijkevraagprijs", "Huidigevraagprijs","prijspm2","Aantalkeergetoond", "Aantalkeergetoondgisteren","Geplaatstop"))
+  
+  Reference_output <- bind_cols(Reference_input,HuisCheck(Reference_input))
+  
+  Reference_output %>%
+    left_join(huizen_data,by="id") %>%
+    select(c(adres, postcode6, prijs,prijstype.y, Woonoppervlakte, Type,"pred_MLM","pred_Ens", "pred_XGL"))%>%
     print(n=Inf)
 }

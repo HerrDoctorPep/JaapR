@@ -6,14 +6,15 @@
 
 library('rvest') # scraping
 library('tidyverse') # data wrangling
-library('stringr') # string manipulation
-library('dplyr') # more tidy stuff
-library('purrr') # more tidy stuff
-library('tidyr') # more tidy stuff
+# library('stringr') # string manipulation
+# library('dplyr') # more tidy stuff
+# library('purrr') # more tidy stuff
+# library('tidyr') # more tidy stuff
 library('lubridate') # more tidy stuff
 library('caret') # Machine learning wrapper
 library('lme4') # simple multilevel model stuff
 library('readxl') # read xlsx files
+library(ggmap) # for mapping with Google API
 
 # Include support tables and load cleaning/scraping functions
 
@@ -25,13 +26,13 @@ source("JaapDeepScraper.r")
 ## Scrape Jaap.nl and organize data
 ##
 
-# Set-up parameters for scraping manually
+# Set-up parameters for scraping
 
 mainPage <- 'https://www.jaap.nl/koophuizen/zuid+holland/groot-rijnmond/rotterdam/50+-woonopp/'
-trimws(html_text(html_node(read_html(mainPage),'.page-info'))) # find max number of pages
-
-maxPage <- 46 # still to be automated
-TODAY = "20190601" # Format: YYYYMMDD
+page_info <- trimws(html_text(html_node(read_html(mainPage),'.page-info'))) # find max number of pages
+print(page_info)
+maxPage <- as.numeric(substr(page_info, nchar(page_info)-1, nchar(page_info))) # assume number of pages has 2 digits
+TODAY <- "20190713" # Format: YYYYMMDD
 
 # Scrape all summary pages and write to file and write to disc using JaapScraper.r
 
@@ -43,25 +44,10 @@ huizen_html <- read_csv(paste0("huizen_",TODAY,".csv"))
 huizen_data <- clean_summary(huizen_html)
 rm(huizen_html)
 
-##
-## scrape underlying pageswith details, using JaapDeepScraper.r
-## 
+# scrape underlying pageswith details, using JaapDeepScraper.r
+ 
+scrape_detail_pages(huizen_data)
 
-for(h in 1:nrow(huizen_data)){
-  tryCatch({
-    print(paste0("scraping house number...",h))
-    newline_html <- scrape_detail(huizen_data$id[h])
-  
-    if(h==1){
-      detail_html<- newline_html
-    } else{
-      detail_html <- detail_html %>% 
-        bind_rows(newline_html) 
-    }
-  }, error=function(e){cat("ERROR in house number",h,"\n")})
-}
-
-write_csv(detail_html, path=paste0("detail_",TODAY,".csv"), na = "NA", append = FALSE, col_names = TRUE)
 
 detail_html <- read_csv(paste0("detail_",TODAY,".csv"))
 detail_data <- clean_detail(detail_html)
@@ -71,6 +57,10 @@ rm(detail_html)
 
 model_data <- combine_summary_detail (huizen_data,detail_data)
 
+source("EngineerJaap.r")
+
+model_data <- engineer_features(model_data)
+
 ##
 ## Modelling 
 ##
@@ -78,8 +68,11 @@ model_data <- combine_summary_detail (huizen_data,detail_data)
 # split in train and test sets
 
 id_train <- createDataPartition(model_data$prijs, p=0.7, list=FALSE) # Alternative based on Caret tutorial
+
 model_data_train <- model_data[id_train,]
 model_data_test <- model_data[-id_train,]
+
+Admissible_X <- (model_data_test$Type %in% model_data_train$Type) & (model_data_test$postcode4 %in% model_data_train$postcode4)
 
 # Two Log-linear models
 
@@ -96,7 +89,7 @@ source("CaretGLMJaap.r") # Simple multiplicative andmulti-level models are equal
 
 # TwoXGB models
 
-source("CaretXGBJaap.r") # Simple multiplicative andmulti-level models are equally good; MAPE = c. 14.2%
+source("CaretXGBJaap.r") # Simple multiplicative andmulti-level models are roughly equally good; ensemble brings down MAPE a bit further
 
 #
 # Check expected asking prices 
@@ -145,18 +138,32 @@ Huis_test <- Huis_test %>%
                           Kamers = 9,
                           Slaapkamers =5,
                           Woonoppervlakte = 291,
-                          Type = "Herenhuis",
+                          Type = "Tussenwoning",
                           Bouwjaar = 1900,
                           Inhoud = 1023,
                           Perceeloppervlakte = 152,
-                          Tuin="Achtertuin"
+                          Tuin="Ja"
                           )))
+Huis_test <- Huis_test %>%
+  bind_rows(ListHuis(list(id = "Berkelselaan 22",
+                          postcode6 = "3037PE",
+                          Kamers = 8,
+                          Slaapkamers =7,
+                          Woonoppervlakte = 214,
+                          Type = "Herenhuis",
+                          Bouwjaar = 1913,
+                          Inhoud = 753,
+                          Perceeloppervlakte = 116,
+                          Tuin="Ja")))
 
+
+# Attach predictions
 
 Huis_test <- bind_cols(Huis_test,HuisCheck(Huis_test))
 
 Huis_test%>%
-  select("id", pred_GLM, "pred_MLM", "pred_XGT", "pred_XGL") %>%
+  select("id", "pred_MLM", "pred_Ens", "pred_XGL") %>%
   print()
 
-HuisReference("3024TL")
+
+HuisReference("3026CK")

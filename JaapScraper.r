@@ -102,7 +102,6 @@ scrape_summary_pages <- function(mainPage,maxPage,TODAY) {
 
 # make numbers; for analysis purposes
 
-
 clean_summary <- function(huizen_html){
   # mutate fields into analyzable format and exclude some extreme values
   
